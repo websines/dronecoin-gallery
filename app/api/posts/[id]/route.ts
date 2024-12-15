@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/src/db'
 import { posts, users, comments, votes } from '@/src/db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { eq, sql, and, desc } from 'drizzle-orm'
 
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!params?.id) {
+  const { id } = await Promise.resolve(params)
+  const userId = req.nextUrl.searchParams.get('userId')
+
+  if (!id) {
     return NextResponse.json(
       { error: 'Post ID is required' },
       { status: 400 }
@@ -15,7 +18,7 @@ export async function GET(
   }
 
   try {
-    const [post] = await db
+    const post = await db
       .select({
         id: posts.id,
         title: posts.title,
@@ -30,10 +33,16 @@ export async function GET(
           votes: sql`(SELECT COUNT(*) FROM ${votes} WHERE ${votes.postId} = ${posts.id})`,
           comments: sql`(SELECT COUNT(*) FROM ${comments} WHERE ${comments.postId} = ${posts.id})`,
         },
+        hasVoted: userId ? sql`EXISTS (
+          SELECT 1 FROM ${votes} 
+          WHERE ${votes.postId} = ${posts.id} 
+          AND ${votes.userId} = ${userId}
+        )` : sql`false`,
       })
       .from(posts)
       .leftJoin(users, eq(users.id, posts.authorId))
-      .where(eq(posts.id, params.id))
+      .where(eq(posts.id, id))
+      .limit(1)
 
     if (!post) {
       return NextResponse.json(
@@ -42,7 +51,7 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(post)
+    return NextResponse.json(post[0])
   } catch (error) {
     console.error('Error fetching post:', error)
     return NextResponse.json(

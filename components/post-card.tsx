@@ -26,6 +26,7 @@ interface PostCardProps {
       votes?: number
       comments?: number
     }
+    hasVoted?: boolean
   }
   onDelete?: () => void
 }
@@ -34,7 +35,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
   const router = useRouter()
   const { isConnected, userId } = useWalletStore()
   const [voteCount, setVoteCount] = useState(post._count?.votes ?? 0)
-  const [isVoted, setIsVoted] = useState(false)
+  const [isVoted, setIsVoted] = useState(post.hasVoted ?? false)
   const [isVoting, setIsVoting] = useState(false)
   const isAuthor = userId === post.author.id
 
@@ -44,12 +45,12 @@ export function PostCard({ post, onDelete }: PostCardProps) {
       return
     }
 
-    if (isVoting || isVoted) return
+    if (isVoting) return
 
     try {
       setIsVoting(true)
-      setIsVoted(true)
-      setVoteCount(prev => prev + 1)
+      setIsVoted(prev => !prev)
+      setVoteCount(prev => prev + (isVoted ? -1 : 1))
 
       const response = await fetch('/api/votes', {
         method: 'POST',
@@ -63,8 +64,8 @@ export function PostCard({ post, onDelete }: PostCardProps) {
       })
 
       if (!response.ok) {
-        setIsVoted(false)
-        setVoteCount(prev => prev - 1)
+        setIsVoted(prev => !prev)
+        setVoteCount(prev => prev + (isVoted ? 1 : -1))
         const data = await response.json()
         throw new Error(data.error || 'Failed to vote')
       }
@@ -99,114 +100,61 @@ export function PostCard({ post, onDelete }: PostCardProps) {
     }
   }
 
-  const handleCommentClick = () => {
-    router.push(`/posts/${post.id}`)
-  }
-
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(
-        `${window.location.origin}/posts/${post.id}`
-      )
-      toast.success('Link copied to clipboard!')
-    } catch (error) {
-      console.error('Error sharing:', error)
-      toast.error('Failed to copy link')
-    }
-  }
-
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-800/50 bg-black/30 backdrop-blur-sm hover:border-purple-500/50 transition-all duration-200">
+    <div className="border rounded-lg p-4 mb-4 bg-white">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="font-medium">{formatAddress(post.author.walletAddress)}</div>
+        <div className="text-gray-500">·</div>
+        <div className="text-gray-500 text-sm">
+          {formatDate(new Date(post.createdAt))}
+        </div>
+      </div>
+
+      <Link href={`/posts/${post.id}`}>
+        <h2 className="text-xl font-semibold mb-2 hover:text-blue-600">
+          {post.title}
+        </h2>
+      </Link>
+
+      <p className="text-gray-600 mb-4">{post.content}</p>
+
       {post.imageUrl && (
-        <div className="relative aspect-[2/1] w-full overflow-hidden">
+        <div className="relative w-full h-64 mb-4">
           <Image
             src={post.imageUrl}
             alt={post.title}
             fill
-            className="object-cover transition-transform duration-300 hover:scale-105"
+            className="object-cover rounded-lg"
           />
         </div>
       )}
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <Link
-            href={`/profile/${post.author.walletAddress}`}
-            className="text-sm text-gray-400 hover:text-purple-400"
-          >
-            {formatAddress(post.author.walletAddress)}
-          </Link>
-          <span className="text-sm text-gray-500">
-            {formatDate(post.createdAt)}
-          </span>
-        </div>
-        <Link href={`/posts/${post.id}`}>
-          <h3 className="text-xl font-semibold text-gray-100 mb-2 hover:text-purple-400">
-            {post.title}
-          </h3>
-          <p className="text-gray-400 mb-6 line-clamp-2">{post.content}</p>
-        </Link>
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "text-gray-400 hover:text-purple-400",
-              isVoted && "text-purple-400"
-            )}
-            onClick={handleVote}
-            disabled={isVoting || isVoted}
-          >
-            <Heart
-              className={cn(
-                "mr-2 h-4 w-4",
-                isVoted && "fill-current"
-              )}
-            />
-            {voteCount}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-gray-400 hover:text-purple-400"
-            onClick={handleCommentClick}
-          >
-            <MessageCircle className="mr-2 h-4 w-4" />
-            {post._count?.comments ?? 0}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-gray-400 hover:text-purple-400 ml-auto"
-            onClick={handleShare}
-          >
-            <Share2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-      {isAuthor && (
-        <div className="flex items-center gap-4 mt-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(
-              'flex items-center gap-1',
-              isVoted && 'text-red-500'
-            )}
-            onClick={handleVote}
-            disabled={isVoting || isVoted}
-          >
-            <Heart className={cn('w-5 h-5', isVoted && 'fill-current')} />
-            <span>{voteCount}</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex items-center gap-1"
-            onClick={() => router.push(`/posts/${post.id}`)}
-          >
-            <MessageCircle className="w-5 h-5" />
-            <span>{post._count?.comments ?? 0}</span>
-          </Button>
+
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          className={cn(
+            'flex items-center gap-1',
+            isVoted && 'text-red-500'
+          )}
+          onClick={handleVote}
+          disabled={isVoting}
+        >
+          <Heart className={cn('w-5 h-5', isVoted && 'fill-current')} />
+          <span>{voteCount}</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="flex items-center gap-1"
+          onClick={() => router.push(`/posts/${post.id}`)}
+        >
+          <MessageCircle className="w-5 h-5" />
+          <span>{post._count?.comments ?? 0}</span>
+        </Button>
+
+        {isAuthor && (
           <Button
             variant="ghost"
             size="sm"
@@ -216,8 +164,8 @@ export function PostCard({ post, onDelete }: PostCardProps) {
             <Trash2 className="w-5 h-5" />
             <span>Delete</span>
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

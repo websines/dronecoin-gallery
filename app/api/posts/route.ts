@@ -59,6 +59,7 @@ export async function POST(request: Request) {
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams
   const userId = searchParams.get('userId')
+  const authorId = searchParams.get('authorId')
 
   try {
     const query = db
@@ -76,13 +77,18 @@ export async function GET(req: NextRequest) {
           votes: sql`(SELECT COUNT(*) FROM ${votes} WHERE ${votes.postId} = ${posts.id})`,
           comments: sql`(SELECT COUNT(*) FROM ${comments} WHERE ${comments.postId} = ${posts.id})`,
         },
+        hasVoted: userId ? sql`EXISTS (
+          SELECT 1 FROM ${votes} 
+          WHERE ${votes.postId} = ${posts.id} 
+          AND ${votes.userId} = ${userId}
+        )` : sql`false`,
       })
       .from(posts)
       .leftJoin(users, eq(users.id, posts.authorId))
       .orderBy(desc(posts.createdAt))
 
-    if (userId) {
-      query.where(eq(posts.authorId, userId))
+    if (authorId) {
+      query.where(eq(posts.authorId, authorId))
     }
 
     const allPosts = await query

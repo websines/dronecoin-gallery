@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { PostCard } from '@/components/post-card'
 import { ConnectWallet } from '@/components/connect-wallet'
-import { getPosts } from '@/app/actions'
+import { useWalletStore } from '@/store/wallet'
 import { Button } from '@/components/ui/button'
 import { PlusCircle } from 'lucide-react'
 import Link from 'next/link'
@@ -45,7 +45,40 @@ function PostList({ posts }: { posts: any[] }) {
 }
 
 export default async function Home() {
-  const posts = await getPosts()
+  const { userId } = useWalletStore()
+  const [posts, setPosts] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setIsLoading(true)
+        const url = new URL('/api/posts', window.location.origin)
+        if (userId) {
+          url.searchParams.set('userId', userId)
+        }
+        const response = await fetch(url)
+        if (!response.ok) throw new Error('Failed to fetch posts')
+        const data = await response.json()
+        setPosts(data)
+      } catch (error) {
+        console.error('Error fetching posts:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchPosts()
+  }, [userId])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-purple-950">
+        <Hero />
+        <div className="container max-w-4xl py-8">Loading...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-purple-950">

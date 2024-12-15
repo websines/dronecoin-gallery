@@ -25,10 +25,15 @@ export async function POST(req: NextRequest) {
       .limit(1)
 
     if (existingVote.length > 0) {
-      return NextResponse.json(
-        { error: 'Already voted' },
-        { status: 400 }
-      )
+      // Remove existing vote
+      await db
+        .delete(votes)
+        .where(and(
+          eq(votes.postId, postId),
+          eq(votes.userId, userId)
+        ))
+      
+      return NextResponse.json({ message: 'Vote removed' })
     }
 
     // Create new vote
@@ -37,6 +42,7 @@ export async function POST(req: NextRequest) {
       .values({
         postId,
         userId,
+        value: 1,
       })
       .returning()
 
