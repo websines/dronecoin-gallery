@@ -3,8 +3,8 @@ import { db } from '@/src/db'
 import { posts, users, comments, votes } from '@/src/db/schema'
 import { desc, eq, sql } from 'drizzle-orm'
 import { Buffer } from 'buffer'
-import fs from 'fs/promises'
 import path from 'path'
+import * as fsPromises from 'fs/promises'
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
         const fileName = `${Date.now()}-${mediaFile.name}`
         const filePath = path.join(process.cwd(), 'public', 'uploads', fileName)
         
-        await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
-        await fs.promises.writeFile(filePath, buffer)
+        await fsPromises.mkdir(path.dirname(filePath), { recursive: true })
+        await fsPromises.writeFile(filePath, buffer)
         
         imageUrl = `/uploads/${fileName}`
       } catch (error) {

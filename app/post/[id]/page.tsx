@@ -57,12 +57,24 @@ export default function PostPage() {
   useEffect(() => {
     const fetchPost = async () => {
       try {
+        setLoading(true)
         const response = await fetch(`/api/posts/${params.id}`)
-        if (response.ok) {
-          const data = await response.json()
-          setPost(data.post)
-          setComments(data.comments)
-        }
+        if (!response.ok) throw new Error('Failed to fetch post')
+        const postData = await response.json()
+        
+        // Fetch comments separately
+        const commentsResponse = await fetch(`/api/posts/${params.id}/comments`)
+        if (!commentsResponse.ok) throw new Error('Failed to fetch comments')
+        const commentsData = await commentsResponse.json()
+        
+        setPost({
+          ...postData,
+          createdAt: new Date(postData.createdAt)
+        })
+        setComments(commentsData.map((comment: any) => ({
+          ...comment,
+          createdAt: new Date(comment.createdAt)
+        })))
       } catch (error) {
         console.error('Error fetching post:', error)
       } finally {
@@ -70,7 +82,9 @@ export default function PostPage() {
       }
     }
 
-    fetchPost()
+    if (params.id) {
+      fetchPost()
+    }
   }, [params.id])
 
   const handleComment = async () => {
@@ -211,12 +225,24 @@ export default function PostPage() {
       <div className="bg-gray-800/50 rounded-lg overflow-hidden shadow-lg backdrop-blur-sm border border-gray-700/50">
         {post.imageUrl && (
           <div className="relative h-96 w-full">
-            <Image
-              src={post.imageUrl}
-              alt={post.title}
-              fill
-              className="object-cover"
-            />
+            {post.imageUrl.match(/\.(mp4|mov|webm)$/i) ? (
+              <video
+                src={post.imageUrl}
+                className="w-full h-full object-cover"
+                controls
+                playsInline
+                preload="metadata"
+              >
+                Your browser does not support the video tag.
+              </video>
+            ) : (
+              <Image
+                src={post.imageUrl}
+                alt={post.title}
+                fill
+                className="object-cover"
+              />
+            )}
           </div>
         )}
         

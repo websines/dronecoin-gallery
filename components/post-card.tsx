@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { useWalletStore } from '@/store/wallet'
 import { cn } from '@/lib/utils'
-import { toast } from 'sonner'
+import { useToast } from '@/components/ui/use-toast'
 
 interface PostCardProps {
   post: {
@@ -32,6 +32,7 @@ interface PostCardProps {
 
 export function PostCard({ post, onDelete }: PostCardProps) {
   const { isConnected, userId } = useWalletStore()
+  const { toast } = useToast()
   const [voteCount, setVoteCount] = useState<number>(Number(post._count?.votes ?? 0))
   const [isVoted, setIsVoted] = useState(post.hasVoted ?? false)
   const [isVoting, setIsVoting] = useState(false)
@@ -39,7 +40,11 @@ export function PostCard({ post, onDelete }: PostCardProps) {
 
   const handleVote = async () => {
     if (!isConnected) {
-      toast.error('Please connect your wallet to vote')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please connect your wallet to vote"
+      })
       return
     }
 
@@ -80,7 +85,11 @@ export function PostCard({ post, onDelete }: PostCardProps) {
       setVoteCount(Number(data.voteCount))
     } catch (error) {
       console.error('Error voting:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to vote')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to vote on post"
+      })
     } finally {
       setIsVoting(false)
     }
@@ -103,11 +112,19 @@ export function PostCard({ post, onDelete }: PostCardProps) {
         throw new Error(data.error || 'Failed to delete post')
       }
 
-      toast.success('Post deleted successfully')
+      toast({
+        variant: "default",
+        title: "Success",
+        description: "Post deleted successfully"
+      })
       onDelete?.()
     } catch (error) {
       console.error('Error deleting post:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to delete post')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete post"
+      })
     }
   }
 
@@ -139,7 +156,11 @@ export function PostCard({ post, onDelete }: PostCardProps) {
             preload="metadata"
             onError={(e) => {
               console.error('Video playback error:', e)
-              toast.error('Failed to load video')
+              toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to load video"
+              })
             }}
           >
             <source src={post.imageUrl} type={`video/${fileExtension}`} />
@@ -156,7 +177,11 @@ export function PostCard({ post, onDelete }: PostCardProps) {
           alt={post.title || 'Post image'}
           fill
           className="object-cover rounded-lg"
-          onError={() => toast.error('Failed to load image')}
+          onError={() => toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to load image"
+          })}
         />
       </div>
     )

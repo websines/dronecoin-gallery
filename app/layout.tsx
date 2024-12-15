@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import { WalletProvider } from "@/components/providers/wallet-provider"
 import "./globals.css"
 import { Navbar } from '@/components/navbar'
+import { Toaster } from '@/components/ui/toaster'
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,6 +25,7 @@ export default function RootLayout({
         inter.className
       )}>
         <WalletProvider>
+          <Toaster />
           <Navbar />
           {children}
         </WalletProvider>

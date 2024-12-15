@@ -38,7 +38,7 @@ export async function POST(request: Request) {
         content,
         postId,
         parentId,
-        authorId: user.id,
+        authorId: user?.id,
       })
       .returning()
 

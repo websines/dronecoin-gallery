@@ -30,6 +30,12 @@ export async function POST(request: Request) {
         .returning()
         .then(rows => rows[0])
     }
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
 
     // Check if user has already voted
     const existingVote = await db.query.votes.findFirst({

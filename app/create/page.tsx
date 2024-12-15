@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { X, ImageIcon, Video, Loader2 } from 'lucide-react'
 import Image from 'next/image'
 import { useWalletStore } from '@/store/wallet'
-import toast from 'react-hot-toast'
+import { useToast } from '@/components/ui/use-toast'
+
 
 interface CloudinaryResult {
   event: string
@@ -28,6 +29,7 @@ export default function CreatePostPage() {
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const { toast } = useToast()
 
   useEffect(() => {
     if (!isConnected) {
@@ -38,7 +40,11 @@ export default function CreatePostPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!address) {
-      toast.error('Please connect your wallet first')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please connect your wallet first"
+      })
       return
     }
 
@@ -56,10 +62,26 @@ export default function CreatePostPage() {
         body: formData,
       })
 
-      if (!response.ok) throw new Error('Failed to create post')
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to create post"
+        })
+        throw new Error('Failed to create post')
+      }
+      toast({
+        title: "Success",
+        description: "Post created successfully"
+      })
       router.push('/')
     } catch (error) {
       console.error('Error creating post:', error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "An error occurred while creating the post"
+      })
     } finally {
       setIsLoading(false)
     }
