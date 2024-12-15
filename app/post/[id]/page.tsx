@@ -116,56 +116,6 @@ export default function PostPage() {
     }
   }
 
-  const renderComment = (comment: Comment, depth = 0) => {
-    return (
-      <div
-        key={comment.id}
-        className={`pl-${depth * 4} py-4 border-b border-gray-700/50`}
-      >
-        <div className="flex items-center space-x-2 text-sm text-gray-400">
-          <span>{formatAddress(comment.author.walletAddress)}</span>
-          <span>•</span>
-          <span>{formatDistanceToNow(new Date(comment.createdAt))} ago</span>
-        </div>
-        
-        <p className="mt-2 text-gray-300">{comment.content}</p>
-        
-        <div className="mt-2 flex items-center space-x-4">
-          <div className="flex items-center space-x-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleVote(comment.id, 1)}
-              className={comment.userVote?.value === 1 ? 'text-green-500' : 'text-gray-400'}
-              disabled={!isConnected}
-            >
-              <ArrowBigUp className="h-4 w-4" />
-            </Button>
-            <span className="text-white font-medium">{comment._count.votes}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleVote(comment.id, -1)}
-              className={comment.userVote?.value === -1 ? 'text-red-500' : 'text-gray-400'}
-              disabled={!isConnected}
-            >
-              <ArrowBigDown className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setReplyTo(comment.id)}
-            disabled={!isConnected}
-          >
-            Reply
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-purple-900 px-4 py-12">
