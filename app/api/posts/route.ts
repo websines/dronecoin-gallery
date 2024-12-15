@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         title,
         content,
         imageUrl,
-        mediaType,
+        mediaType: mediaType as 'image' | 'video' | null,
         authorId: user.id,
         createdAt: new Date(),
       })
