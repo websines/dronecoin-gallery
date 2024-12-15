@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/src/db'
 import { posts, users, comments, votes } from '@/src/db/schema'
-import { eq, sql, and, desc } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const { id } = await Promise.resolve(params)
-  const userId = req.nextUrl.searchParams.get('userId')
 
   if (!id) {
     return NextResponse.json(
@@ -23,20 +22,16 @@ export async function GET(
         id: posts.id,
         title: posts.title,
         content: posts.content,
+        imageUrl: posts.imageUrl,
         createdAt: posts.createdAt,
         author: {
           id: users.id,
           walletAddress: users.walletAddress,
         },
         _count: {
-          votes: sql`(SELECT COUNT(*) FROM ${votes} WHERE ${votes.post_id} = ${posts.id})`,
-          comments: sql`(SELECT COUNT(*) FROM ${comments} WHERE ${comments.post_id} = ${posts.id})`,
+          votes: sql`(SELECT COUNT(*) FROM ${votes} WHERE ${votes.postId} = ${posts.id})`,
+          comments: sql`(SELECT COUNT(*) FROM ${comments} WHERE ${comments.postId} = ${posts.id})`,
         },
-        hasVoted: userId ? sql`EXISTS (
-          SELECT 1 FROM ${votes} 
-          WHERE ${votes.post_id} = ${posts.id} 
-          AND ${votes.user_id} = ${userId}
-        )` : sql`false`,
       })
       .from(posts)
       .leftJoin(users, eq(users.id, posts.authorId))

@@ -21,6 +21,7 @@ export async function POST(request: Request) {
         title,
         content,
         imageUrl: mediaUrl,
+        mediaType,
         authorId: userId,
       })
       .returning()
@@ -32,14 +33,15 @@ export async function POST(request: Request) {
         title: posts.title,
         content: posts.content,
         imageUrl: posts.imageUrl,
+        mediaType: posts.mediaType,
         createdAt: posts.createdAt,
         author: {
           id: users.id,
           walletAddress: users.walletAddress,
         },
         _count: {
-          votes: sql`(SELECT COUNT(*) FROM ${votes} WHERE ${votes.post_id} = ${posts.id})`,
-          comments: sql`(SELECT COUNT(*) FROM ${comments} WHERE ${comments.post_id} = ${posts.id})`,
+          votes: sql`(SELECT COUNT(*) FROM ${votes} WHERE ${votes.postId} = ${posts.id})`,
+          comments: sql`(SELECT COUNT(*) FROM ${comments} WHERE ${comments.postId} = ${posts.id})`,
         },
       })
       .from(posts)
@@ -59,7 +61,7 @@ export async function POST(request: Request) {
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams
   const userId = searchParams.get('userId')
-  const authorId = searchParams.get('authorId')
+  const currentUserId = searchParams.get('currentUserId')
 
   try {
     const query = db
@@ -68,27 +70,26 @@ export async function GET(req: NextRequest) {
         title: posts.title,
         content: posts.content,
         imageUrl: posts.imageUrl,
+        mediaType: posts.mediaType,
         createdAt: posts.createdAt,
         author: {
           id: users.id,
           walletAddress: users.walletAddress,
         },
         _count: {
-          votes: sql`(SELECT COUNT(*) FROM ${votes} WHERE ${votes.post_id} = ${posts.id})`,
-          comments: sql`(SELECT COUNT(*) FROM ${comments} WHERE ${comments.post_id} = ${posts.id})`,
+          votes: sql`(SELECT COUNT(*) FROM ${votes} WHERE ${votes.postId} = ${posts.id})`,
+          comments: sql`(SELECT COUNT(*) FROM ${comments} WHERE ${comments.postId} = ${posts.id})`,
         },
-        hasVoted: userId ? sql`EXISTS (
-          SELECT 1 FROM ${votes} 
-          WHERE ${votes.post_id} = ${posts.id} 
-          AND ${votes.user_id} = ${userId}
-        )` : sql`false`,
+        hasVoted: currentUserId 
+          ? sql`EXISTS (SELECT 1 FROM ${votes} WHERE ${votes.postId} = ${posts.id} AND ${votes.userId} = ${currentUserId})`
+          : sql`false`,
       })
       .from(posts)
       .leftJoin(users, eq(users.id, posts.authorId))
       .orderBy(desc(posts.createdAt))
 
-    if (authorId) {
-      query.where(eq(posts.authorId, authorId))
+    if (userId) {
+      query.where(eq(posts.authorId, userId))
     }
 
     const allPosts = await query

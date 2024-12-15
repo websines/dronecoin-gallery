@@ -37,11 +37,7 @@ export default function PostPage() {
     const fetchPost = async () => {
       try {
         setIsLoadingPost(true)
-        const url = new URL(`/api/posts/${id}`, window.location.origin)
-        if (userId) {
-          url.searchParams.set('userId', userId)
-        }
-        const response = await fetch(url)
+        const response = await fetch(`/api/posts/${id}`)
         if (!response.ok) throw new Error('Failed to fetch post')
         const data = await response.json()
         setPost(data)
@@ -73,7 +69,7 @@ export default function PostPage() {
       fetchPost()
       fetchComments()
     }
-  }, [id, userId])
+  }, [id])
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault()

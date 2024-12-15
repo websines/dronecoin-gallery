@@ -8,7 +8,6 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { useWalletStore } from '@/store/wallet'
 import { cn } from '@/lib/utils'
-import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 interface PostCardProps {
@@ -17,6 +16,7 @@ interface PostCardProps {
     title: string
     content: string
     imageUrl: string | null
+    mediaType?: 'image' | 'video' | null
     createdAt: Date
     author: {
       id: string
@@ -32,9 +32,8 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, onDelete }: PostCardProps) {
-  const router = useRouter()
   const { isConnected, userId } = useWalletStore()
-  const [voteCount, setVoteCount] = useState(post._count?.votes ?? 0)
+  const [voteCount, setVoteCount] = useState<number>(Number(post._count?.votes ?? 0))
   const [isVoted, setIsVoted] = useState(post.hasVoted ?? false)
   const [isVoting, setIsVoting] = useState(false)
   const isAuthor = userId === post.author.id
@@ -49,8 +48,14 @@ export function PostCard({ post, onDelete }: PostCardProps) {
 
     try {
       setIsVoting(true)
-      setIsVoted(prev => !prev)
-      setVoteCount(prev => prev + (isVoted ? -1 : 1))
+
+      // Store previous state for rollback
+      const previousVoteState = isVoted
+      const previousVoteCount = Number(voteCount)
+
+      // Optimistically update UI
+      setIsVoted(!previousVoteState)
+      setVoteCount(previousVoteCount + (previousVoteState ? -1 : 1))
 
       const response = await fetch('/api/votes', {
         method: 'POST',
@@ -64,11 +69,16 @@ export function PostCard({ post, onDelete }: PostCardProps) {
       })
 
       if (!response.ok) {
-        setIsVoted(prev => !prev)
-        setVoteCount(prev => prev + (isVoted ? 1 : -1))
+        // Rollback on error
+        setIsVoted(previousVoteState)
+        setVoteCount(previousVoteCount)
         const data = await response.json()
         throw new Error(data.error || 'Failed to vote')
       }
+
+      // Get the updated vote count from the server
+      const data = await response.json()
+      setVoteCount(Number(data.voteCount))
     } catch (error) {
       console.error('Error voting:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to vote')
@@ -89,43 +99,79 @@ export function PostCard({ post, onDelete }: PostCardProps) {
         body: JSON.stringify({ userId }),
       })
 
-      if (!response.ok) throw new Error('Failed to delete post')
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to delete post')
+      }
 
       toast.success('Post deleted successfully')
       onDelete?.()
-      router.refresh()
     } catch (error) {
       console.error('Error deleting post:', error)
-      toast.error('Failed to delete post')
+      toast.error(error instanceof Error ? error.message : 'Failed to delete post')
+    }
+  }
+
+  const handleShare = async () => {
+    try {
+      await navigator.share({
+        title: post.title,
+        text: post.content,
+        url: window.location.href,
+      })
+    } catch (error) {
+      console.error('Error sharing:', error)
     }
   }
 
   return (
-    <div className="border rounded-lg p-4 mb-4 bg-white">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="font-medium">{formatAddress(post.author.walletAddress)}</div>
-        <div className="text-gray-500">·</div>
-        <div className="text-gray-500 text-sm">
-          {formatDate(new Date(post.createdAt))}
+    <div className="bg-gray-800/50 rounded-lg p-6">
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-xl font-semibold text-white mb-1">
+            {post.title}
+          </h3>
+          <p className="text-gray-400 text-sm">
+            Posted by {formatAddress(post.author.walletAddress)} •{' '}
+            {formatDate(post.createdAt)}
+          </p>
         </div>
+        {isAuthor && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-red-500 hover:text-red-400"
+            onClick={handleDelete}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
-      <Link href={`/posts/${post.id}`}>
-        <h2 className="text-xl font-semibold mb-2 hover:text-blue-600">
-          {post.title}
-        </h2>
-      </Link>
-
-      <p className="text-gray-600 mb-4">{post.content}</p>
+      <p className="text-gray-300 mb-4">{post.content}</p>
 
       {post.imageUrl && (
-        <div className="relative w-full h-64 mb-4">
-          <Image
-            src={post.imageUrl}
-            alt={post.title}
-            fill
-            className="object-cover rounded-lg"
-          />
+        <div className="mb-4 relative rounded-lg overflow-hidden bg-gray-900">
+          {post.imageUrl.endsWith('.mp4') || post.imageUrl.endsWith('.mov') ? (
+            <video 
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full h-auto max-h-[512px] object-contain"
+            >
+              <source src={post.imageUrl} type={post.imageUrl.endsWith('.mp4') ? 'video/mp4' : 'video/quicktime'} />
+              Your browser does not support the video tag.
+            </video>
+          ) : (
+            <div className="relative aspect-video">
+              <Image
+                src={post.imageUrl}
+                alt={post.title}
+                fill
+                className="object-contain"
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -134,37 +180,34 @@ export function PostCard({ post, onDelete }: PostCardProps) {
           variant="ghost"
           size="sm"
           className={cn(
-            'flex items-center gap-1',
-            isVoted && 'text-red-500'
+            'text-gray-400 hover:text-gray-300',
+            isVoted && 'text-red-500 hover:text-red-400'
           )}
           onClick={handleVote}
           disabled={isVoting}
         >
-          <Heart className={cn('w-5 h-5', isVoted && 'fill-current')} />
-          <span>{voteCount}</span>
+          <Heart
+            className={cn('mr-1.5 h-4 w-4', isVoted && 'fill-current')}
+          />
+          {voteCount}
         </Button>
+
+        <Link href={`/post/${post.id}`}>
+          <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-300">
+            <MessageCircle className="mr-1.5 h-4 w-4" />
+            {post._count?.comments ?? 0}
+          </Button>
+        </Link>
 
         <Button
           variant="ghost"
           size="sm"
-          className="flex items-center gap-1"
-          onClick={() => router.push(`/posts/${post.id}`)}
+          className="text-gray-400 hover:text-gray-300"
+          onClick={handleShare}
         >
-          <MessageCircle className="w-5 h-5" />
-          <span>{post._count?.comments ?? 0}</span>
+          <Share2 className="mr-1.5 h-4 w-4" />
+          Share
         </Button>
-
-        {isAuthor && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex items-center gap-1 text-red-500 ml-auto"
-            onClick={handleDelete}
-          >
-            <Trash2 className="w-5 h-5" />
-            <span>Delete</span>
-          </Button>
-        )}
       </div>
     </div>
   )

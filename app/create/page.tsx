@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { CldUploadWidget } from 'next-cloudinary'
 import { Button } from '@/components/ui/button'
@@ -18,38 +18,47 @@ interface MediaUpload {
   previewUrl?: string
 }
 
-export default function CreatePost() {
+export default function CreatePostPage() {
+  const { isConnected, userId } = useWalletStore()
   const router = useRouter()
-  const { address, isConnected, userId } = useWalletStore()
+  const [isLoading, setIsLoading] = useState(false)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [media, setMedia] = useState<MediaUpload | null>(null)
-  const [loading, setLoading] = useState(false)
 
-  const handleFilePreview = useCallback((file: File) => {
-    return new Promise<string>((resolve) => {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        resolve(reader.result as string)
-      }
-      reader.readAsDataURL(file)
-    })
-  }, [])
+  useEffect(() => {
+    if (!isConnected) {
+      router.push('/')
+    }
+  }, [isConnected, router])
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setPreview(reader.result as string)
+      setMediaType(file.type.startsWith('video/') ? 'video' : 'image')
+    }
+    reader.readAsDataURL(file)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!isConnected) return
 
     try {
-      setLoading(true)
+      setIsLoading(true)
       const response = await fetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
           content,
-          mediaUrl: media?.url,
-          mediaType: media?.type,
+          mediaUrl: preview,
+          mediaType,
           userId: userId
         }),
       })
@@ -61,7 +70,7 @@ export default function CreatePost() {
     } catch (error) {
       console.error('Error creating post:', error)
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
@@ -143,10 +152,10 @@ export default function CreatePost() {
                       </TabsTrigger>
                     </TabsList>
                     <TabsContent value="image" className="mt-4">
-                      {media?.type === 'image' ? (
+                      {preview && mediaType === 'image' ? (
                         <div className="relative w-full h-[400px] overflow-hidden rounded-lg border border-gray-800 mb-4">
                           <Image
-                            src={media.url}
+                            src={preview}
                             alt="Post preview"
                             fill
                             className="object-contain"
@@ -156,7 +165,7 @@ export default function CreatePost() {
                             variant="ghost"
                             size="icon"
                             className="absolute top-2 right-2 h-8 w-8 bg-black/50 hover:bg-black/70"
-                            onClick={() => setMedia(null)}
+                            onClick={() => setPreview(null)}
                           >
                             <X className="h-4 w-4" />
                           </Button>
@@ -190,10 +199,8 @@ export default function CreatePost() {
                           }}
                           onSuccess={(result: any) => {
                             if (result.event === "success") {
-                              setMedia({
-                                type: 'image',
-                                url: result.info.secure_url
-                              })
+                              setPreview(result.info.secure_url)
+                              setMediaType('image')
                             }
                           }}
                         >
@@ -220,10 +227,10 @@ export default function CreatePost() {
                       )}
                     </TabsContent>
                     <TabsContent value="video" className="mt-4">
-                      {media?.type === 'video' ? (
+                      {preview && mediaType === 'video' ? (
                         <div className="relative w-full h-[400px] overflow-hidden rounded-lg border border-gray-800 mb-4">
                           <video
-                            src={media.url}
+                            src={preview}
                             className="w-full h-full object-contain"
                             controls
                           />
@@ -232,7 +239,7 @@ export default function CreatePost() {
                             variant="ghost"
                             size="icon"
                             className="absolute top-2 right-2 h-8 w-8 bg-black/50 hover:bg-black/70"
-                            onClick={() => setMedia(null)}
+                            onClick={() => setPreview(null)}
                           >
                             <X className="h-4 w-4" />
                           </Button>
@@ -266,10 +273,8 @@ export default function CreatePost() {
                           }}
                           onSuccess={(result: any) => {
                             if (result.event === "success") {
-                              setMedia({
-                                type: 'video',
-                                url: result.info.secure_url
-                              })
+                              setPreview(result.info.secure_url)
+                              setMediaType('video')
                             }
                           }}
                         >
@@ -300,10 +305,10 @@ export default function CreatePost() {
 
                 <Button
                   type="submit"
-                  disabled={loading}
+                  disabled={isLoading}
                   className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-medium py-2.5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
-                  {loading ? (
+                  {isLoading ? (
                     <div className="flex items-center justify-center">
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       <span>Creating Post...</span>
