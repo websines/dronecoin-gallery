@@ -1,4 +1,6 @@
-import { Suspense } from 'react'
+'use client'
+
+import { Suspense, useState, useEffect } from 'react'
 import { PostCard } from '@/components/post-card'
 import { ConnectWallet } from '@/components/connect-wallet'
 import { useWalletStore } from '@/store/wallet'
@@ -44,7 +46,7 @@ function PostList({ posts }: { posts: any[] }) {
   )
 }
 
-export default async function Home() {
+export default function Home() {
   const { userId } = useWalletStore()
   const [posts, setPosts] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -53,11 +55,7 @@ export default async function Home() {
     const fetchPosts = async () => {
       try {
         setIsLoading(true)
-        const url = new URL('/api/posts', window.location.origin)
-        if (userId) {
-          url.searchParams.set('userId', userId)
-        }
-        const response = await fetch(url)
+        const response = await fetch(`/api/posts${userId ? `?userId=${userId}` : ''}`)
         if (!response.ok) throw new Error('Failed to fetch posts')
         const data = await response.json()
         setPosts(data)

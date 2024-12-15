@@ -38,8 +38,8 @@ export async function POST(request: Request) {
           walletAddress: users.walletAddress,
         },
         _count: {
-          votes: sql`(SELECT COUNT(*) FROM ${votes} WHERE ${votes.postId} = ${posts.id})`,
-          comments: sql`(SELECT COUNT(*) FROM ${comments} WHERE ${comments.postId} = ${posts.id})`,
+          votes: sql`(SELECT COUNT(*) FROM ${votes} WHERE ${votes.post_id} = ${posts.id})`,
+          comments: sql`(SELECT COUNT(*) FROM ${comments} WHERE ${comments.post_id} = ${posts.id})`,
         },
       })
       .from(posts)
@@ -74,13 +74,13 @@ export async function GET(req: NextRequest) {
           walletAddress: users.walletAddress,
         },
         _count: {
-          votes: sql`(SELECT COUNT(*) FROM ${votes} WHERE ${votes.postId} = ${posts.id})`,
-          comments: sql`(SELECT COUNT(*) FROM ${comments} WHERE ${comments.postId} = ${posts.id})`,
+          votes: sql`(SELECT COUNT(*) FROM ${votes} WHERE ${votes.post_id} = ${posts.id})`,
+          comments: sql`(SELECT COUNT(*) FROM ${comments} WHERE ${comments.post_id} = ${posts.id})`,
         },
         hasVoted: userId ? sql`EXISTS (
           SELECT 1 FROM ${votes} 
-          WHERE ${votes.postId} = ${posts.id} 
-          AND ${votes.userId} = ${userId}
+          WHERE ${votes.post_id} = ${posts.id} 
+          AND ${votes.user_id} = ${userId}
         )` : sql`false`,
       })
       .from(posts)

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/src/db'
 import { votes } from '@/src/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 export async function POST(req: NextRequest) {
   try {
-    const { postId, userId } = await req.json()
+    const { userId, postId, commentId } = await req.json()
 
-    if (!postId || !userId) {
+    if (!userId || (!postId && !commentId)) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -18,35 +18,39 @@ export async function POST(req: NextRequest) {
     const existingVote = await db
       .select()
       .from(votes)
-      .where(and(
-        eq(votes.postId, postId),
-        eq(votes.userId, userId)
-      ))
+      .where(
+        and(
+          eq(votes.userId, userId),
+          commentId ? eq(votes.commentId, commentId) : eq(votes.postId, postId)
+        )
+      )
       .limit(1)
 
     if (existingVote.length > 0) {
-      // Remove existing vote
+      // If vote exists, delete it (toggle off)
       await db
         .delete(votes)
-        .where(and(
-          eq(votes.postId, postId),
-          eq(votes.userId, userId)
-        ))
-      
-      return NextResponse.json({ message: 'Vote removed' })
+        .where(
+          and(
+            eq(votes.userId, userId),
+            commentId ? eq(votes.commentId, commentId) : eq(votes.postId, postId)
+          )
+        )
+
+      return NextResponse.json({ action: 'removed' })
     }
 
-    // Create new vote
+    // If no existing vote, create a new one
     const [vote] = await db
       .insert(votes)
       .values({
-        postId,
         userId,
-        value: 1,
+        postId: postId || null,
+        commentId: commentId || null,
       })
       .returning()
 
-    return NextResponse.json(vote)
+    return NextResponse.json({ action: 'added', vote })
   } catch (error) {
     console.error('Error handling vote:', error)
     return NextResponse.json(

@@ -20,13 +20,19 @@ export const posts = pgTable('posts', {
 })
 
 export const comments = pgTable('comments', {
-  id: uuid('id').defaultRandom().primaryKey(),
+  id: text('id').primaryKey().$defaultFn(() => nanoid()),
   content: text('content').notNull(),
-  postId: uuid('post_id').references(() => posts.id).notNull(),
-  authorId: uuid('author_id').references(() => users.id).notNull(),
-  parentId: uuid('parent_id').references(() => comments.id),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  authorId: text('authorId')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  postId: text('postId')
+    .references(() => posts.id, { onDelete: 'cascade' })
+    .notNull(),
+  parentId: text('parentId')
+    .references(() => comments.id, { onDelete: 'cascade' }),
+  level: integer('level').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
 export const votes = pgTable('votes', {

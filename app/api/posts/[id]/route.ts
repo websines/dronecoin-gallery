@@ -18,31 +18,29 @@ export async function GET(
   }
 
   try {
-    const post = await db
+    const [post] = await db
       .select({
         id: posts.id,
         title: posts.title,
         content: posts.content,
-        imageUrl: posts.imageUrl,
         createdAt: posts.createdAt,
         author: {
           id: users.id,
           walletAddress: users.walletAddress,
         },
         _count: {
-          votes: sql`(SELECT COUNT(*) FROM ${votes} WHERE ${votes.postId} = ${posts.id})`,
-          comments: sql`(SELECT COUNT(*) FROM ${comments} WHERE ${comments.postId} = ${posts.id})`,
+          votes: sql`(SELECT COUNT(*) FROM ${votes} WHERE ${votes.post_id} = ${posts.id})`,
+          comments: sql`(SELECT COUNT(*) FROM ${comments} WHERE ${comments.post_id} = ${posts.id})`,
         },
         hasVoted: userId ? sql`EXISTS (
           SELECT 1 FROM ${votes} 
-          WHERE ${votes.postId} = ${posts.id} 
-          AND ${votes.userId} = ${userId}
+          WHERE ${votes.post_id} = ${posts.id} 
+          AND ${votes.user_id} = ${userId}
         )` : sql`false`,
       })
       .from(posts)
       .leftJoin(users, eq(users.id, posts.authorId))
       .where(eq(posts.id, id))
-      .limit(1)
 
     if (!post) {
       return NextResponse.json(
@@ -51,7 +49,7 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(post[0])
+    return NextResponse.json(post)
   } catch (error) {
     console.error('Error fetching post:', error)
     return NextResponse.json(
