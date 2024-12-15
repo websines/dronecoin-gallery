@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/src/db'
 import { comments, users, posts } from '@/src/db/schema'
-import { nanoid } from 'nanoid'
-import { desc, eq } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
+import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(request: Request) {
   try {
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       user = await db
         .insert(users)
         .values({
-          id: nanoid(),
+          id: uuidv4(),
           walletAddress,
         })
         .returning()
@@ -34,13 +34,13 @@ export async function POST(request: Request) {
     const comment = await db
       .insert(comments)
       .values({
-        id: nanoid(),
+        id: uuidv4(),
         content,
         postId,
         parentId,
         authorId: user?.id,
       })
-      .returning()
+      .returning() as { id: string }[]
 
     const commentWithRelations = await db.query.comments.findFirst({
       where: eq(comments.id, comment[0].id),
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams
-  const userId = searchParams.get('userId')
+  const authorId = searchParams.get('authorId')
 
   try {
     const query = db
@@ -88,8 +88,8 @@ export async function GET(req: NextRequest) {
       .leftJoin(posts, eq(posts.id, comments.postId))
       .orderBy(desc(comments.createdAt))
 
-    if (userId) {
-      query.where(eq(comments.authorId, userId))
+    if (authorId) {
+      query.where(eq(comments.authorId, authorId))
     }
 
     const userComments = await query

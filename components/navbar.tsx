@@ -20,11 +20,11 @@ export function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 z-50 w-full border-b border-gray-800/50 backdrop-blur-xl bg-black/30">
+    <nav className="sticky top-0 z-50 w-full border-b border-purple-500/10 backdrop-blur-xl bg-gradient-to-r from-black/90 via-purple-950/30 to-black/90">
       <div className="container flex h-16 items-center justify-between px-4">
         <Link 
           href="/" 
-          className="flex items-center space-x-2"
+          className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
         >
           <Rocket className="h-6 w-6 text-purple-500" />
           <span className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
@@ -47,7 +47,7 @@ export function Navbar() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-gray-800 bg-black/50 text-gray-300 hover:text-white hover:bg-purple-500/10 hover:border-purple-500"
+                  className="border-purple-500/20 bg-black/50 text-gray-300 hover:text-white hover:bg-purple-500/10 hover:border-purple-500/50"
                 >
                   {formatAddress(address!)}
                 </Button>
@@ -57,7 +57,7 @@ export function Navbar() {
             <Button
               variant="outline"
               size="sm"
-              className="border-gray-800 bg-black/50 text-gray-300 hover:text-white hover:bg-purple-500/10 hover:border-purple-500"
+              className="border-purple-500/20 bg-black/50 text-gray-300 hover:text-white hover:bg-purple-500/10 hover:border-purple-500/50"
               onClick={handleConnect}
             >
               Connect Wallet

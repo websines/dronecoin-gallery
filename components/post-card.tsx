@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { useWalletStore } from '@/store/wallet'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
+import { motion } from 'framer-motion'
 
 interface PostCardProps {
   post: {
@@ -31,7 +32,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, onDelete }: PostCardProps) {
-  const { isConnected, userId } = useWalletStore()
+  const { isConnected, userId, address } = useWalletStore()
   const { toast } = useToast()
   const [voteCount, setVoteCount] = useState<number>(Number(post._count?.votes ?? 0))
   const [isVoted, setIsVoted] = useState(post.hasVoted ?? false)
@@ -52,14 +53,10 @@ export function PostCard({ post, onDelete }: PostCardProps) {
 
     try {
       setIsVoting(true)
-
-      // Store previous state for rollback
       const previousVoteState = isVoted
-      const previousVoteCount = Number(voteCount)
-
-      // Optimistically update UI
+      const previousVoteCount = voteCount
       setIsVoted(!previousVoteState)
-      setVoteCount(previousVoteCount + (previousVoteState ? -1 : 1))
+      setVoteCount(prev => prev + (!previousVoteState ? 1 : -1))
 
       const response = await fetch('/api/votes', {
         method: 'POST',
@@ -69,20 +66,20 @@ export function PostCard({ post, onDelete }: PostCardProps) {
         body: JSON.stringify({
           postId: post.id,
           userId,
+          walletAddress: address
         }),
       })
 
       if (!response.ok) {
-        // Rollback on error
         setIsVoted(previousVoteState)
         setVoteCount(previousVoteCount)
         const data = await response.json()
         throw new Error(data.error || 'Failed to vote')
       }
 
-      // Get the updated vote count from the server
       const data = await response.json()
-      setVoteCount(Number(data.voteCount))
+      setVoteCount(data.voteCount)
+      setIsVoted(data.hasVoted)
     } catch (error) {
       console.error('Error voting:', error)
       toast({
@@ -140,115 +137,96 @@ export function PostCard({ post, onDelete }: PostCardProps) {
     }
   }
 
-  const renderMedia = () => {
-    if (!post.imageUrl) return null
-
-    const fileExtension = post.imageUrl.split('.').pop()?.toLowerCase()
-    const isVideo = fileExtension === 'mp4' || fileExtension === 'mov' || fileExtension === 'webm'
-
-    if (isVideo) {
-      return (
-        <div className="relative w-full aspect-video">
-          <video
-            className="w-full h-full object-cover rounded-lg"
-            controls
-            playsInline
-            preload="metadata"
-            onError={(e) => {
-              console.error('Video playback error:', e)
-              toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to load video"
-              })
-            }}
-          >
-            <source src={post.imageUrl} type={`video/${fileExtension}`} />
-            Your browser does not support the video tag.
-          </video>
-        </div>
-      )
-    }
-
-    return (
-      <div className="relative w-full aspect-video">
-        <Image
-          src={post.imageUrl}
-          alt={post.title || 'Post image'}
-          fill
-          className="object-cover rounded-lg"
-          onError={() => toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to load image"
-          })}
-        />
-      </div>
-    )
-  }
-
   return (
-    <div className="bg-gray-800/50 rounded-lg p-6">
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-xl font-semibold text-white mb-1">
+    <Link href={`/post/${post.id}`}>
+      <motion.div 
+        whileHover={{ y: -5 }}
+        className="bg-gray-800/30 rounded-xl overflow-hidden border border-gray-700/30 backdrop-blur-sm hover:border-purple-500/30 transition-colors group"
+      >
+        {post.imageUrl && (
+          <div className="relative aspect-video w-full overflow-hidden">
+            {post.imageUrl.match(/\.(mp4|mov|webm)$/i) ? (
+              <video
+                src={post.imageUrl}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                preload="metadata"
+                muted
+                playsInline
+              >
+                Your browser does not support the video tag.
+              </video>
+            ) : (
+              <Image
+                src={post.imageUrl}
+                alt={post.title}
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-700"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent" />
+          </div>
+        )}
+        
+        <div className="p-4">
+          <div className="flex items-center space-x-2 text-sm text-gray-400 mb-2">
+            <span className="px-2 py-1 bg-purple-500/10 rounded-full text-purple-400 text-xs">
+              {formatAddress(post.author.walletAddress)}
+            </span>
+            <span>•</span>
+            <span>{formatDate(post.createdAt)}</span>
+          </div>
+          
+          <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2 group-hover:text-purple-400 transition-colors">
             {post.title}
           </h3>
-          <p className="text-gray-400 text-sm">
-            Posted by {formatAddress(post.author.walletAddress)} •{' '}
-            {formatDate(post.createdAt)}
+          
+          <p className="text-gray-400 text-sm line-clamp-2 mb-4">
+            {post.content}
           </p>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleVote()
+                }}
+                className={cn(
+                  'text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors',
+                  isVoted && 'text-purple-400 bg-purple-500/10'
+                )}
+                disabled={isVoting}
+              >
+                <Heart
+                  className={cn('mr-1.5 h-5 w-5', isVoted && 'fill-current')}
+                />
+                <span className="font-medium">{voteCount}</span>
+              </Button>
+              
+              <div className="flex items-center text-gray-400 text-sm">
+                <MessageCircle className="mr-1.5 h-4 w-4" />
+                {post._count?.comments ?? 0}
+              </div>
+            </div>
+            
+            {isAuthor && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleDelete()
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
-        {isAuthor && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-red-500 hover:text-red-400"
-            onClick={handleDelete}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-
-      <p className="text-gray-300 mb-4">{post.content}</p>
-
-      {renderMedia()}
-
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn(
-            'text-gray-400 hover:text-gray-300',
-            isVoted && 'text-red-500 hover:text-red-400'
-          )}
-          onClick={handleVote}
-          disabled={isVoting}
-        >
-          <Heart
-            className={cn('mr-1.5 h-4 w-4', isVoted && 'fill-current')}
-          />
-          {voteCount}
-        </Button>
-
-        <Link href={`/post/${post.id}`}>
-          <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-300">
-            <MessageCircle className="mr-1.5 h-4 w-4" />
-            {post._count?.comments ?? 0}
-          </Button>
-        </Link>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-gray-400 hover:text-gray-300"
-          onClick={handleShare}
-        >
-          <Share2 className="mr-1.5 h-4 w-4" />
-          Share
-        </Button>
-      </div>
-    </div>
+      </motion.div>
+    </Link>
   )
 }

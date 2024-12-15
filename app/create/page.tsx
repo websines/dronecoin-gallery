@@ -150,7 +150,7 @@ export default function CreatePostPage() {
                         </div>
                       ) : (
                         <CldUploadWidget
-                          uploadPreset="dronecoin"
+                          uploadPreset="drones"
                           options={{
                             maxFiles: 1,
                             resourceType: "image",
@@ -202,7 +202,7 @@ export default function CreatePostPage() {
                         </div>
                       ) : (
                         <CldUploadWidget
-                          uploadPreset="dronecoin"
+                          uploadPreset="drones"
                           options={{
                             maxFiles: 1,
                             resourceType: "video",
