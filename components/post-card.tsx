@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { formatAddress, formatDate } from '@/lib/utils'
-import { Heart, MessageCircle, Share2, Trash2 } from 'lucide-react'
+import { Heart, MessageCircle, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'

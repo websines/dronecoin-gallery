@@ -9,7 +9,7 @@ import * as fsPromises from 'fs/promises'
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const walletAddress = formData.get('walletAddress') as string
+    const walletAddress = formData.get('address') as string
     
     if (!walletAddress) {
       return new Response('Unauthorized - Wallet not connected', { status: 401 })
@@ -18,28 +18,26 @@ export async function POST(request: NextRequest) {
     const title = formData.get('title') as string
     const content = formData.get('content') as string
     const mediaFile = formData.get('media') as File | null
+    const imageUrl = formData.get('imageUrl') as string | null
+    const mediaType = formData.get('mediaType') as string | null
 
     if (!title || !content) {
       return new Response('Missing required fields', { status: 400 })
     }
 
-    let imageUrl = null
-    if (mediaFile) {
-      try {
-        const bytes = await mediaFile.arrayBuffer()
-        const buffer = Buffer.from(bytes)
+    // Get or create user
+    let [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.walletAddress, walletAddress))
 
-        const fileName = `${Date.now()}-${mediaFile.name}`
-        const filePath = path.join(process.cwd(), 'public', 'uploads', fileName)
-        
-        await fsPromises.mkdir(path.dirname(filePath), { recursive: true })
-        await fsPromises.writeFile(filePath, buffer)
-        
-        imageUrl = `/uploads/${fileName}`
-      } catch (error) {
-        console.error('Error uploading media:', error)
-        return new Response('Failed to upload media', { status: 500 })
-      }
+    if (!user) {
+      [user] = await db
+        .insert(users)
+        .values({
+          walletAddress,
+        })
+        .returning()
     }
 
     // Create post with media
@@ -49,7 +47,8 @@ export async function POST(request: NextRequest) {
         title,
         content,
         imageUrl,
-        authorId: walletAddress,
+        mediaType,
+        authorId: user.id,
         createdAt: new Date(),
       })
       .returning()

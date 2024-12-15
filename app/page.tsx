@@ -112,41 +112,32 @@ function LoadingSkeleton() {
 
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
   const [hasMore, setHasMore] = useState(true)
   const [page, setPage] = useState(1)
   const { userId, isConnected } = useWalletStore()
   const loader = useRef(null)
 
-  const loadPosts = async (pageNum: number) => {
+  const loadPosts = useCallback(async () => {
     try {
-      setIsLoading(true)
-      const response = await fetch(
-        `/api/posts?page=${pageNum}&limit=9${userId ? `&currentUserId=${userId}` : ''}`
-      )
+      setLoading(true)
+      const response = await fetch('/api/posts')
       if (!response.ok) throw new Error('Failed to fetch posts')
       const data = await response.json()
-      
-      if (pageNum === 1) {
-        setPosts(data)
-      } else {
-        setPosts(prev => [...prev, ...data])
-      }
-      
-      setHasMore(data.length === 9) // Assuming 9 is our page size
+      setPosts(data)
     } catch (error) {
-      console.error('Error fetching posts:', error)
+      console.error('Error loading posts:', error)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
-  }
+  }, [])
 
   const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
     const target = entries[0]
-    if (target.isIntersecting && hasMore && !isLoading) {
+    if (target.isIntersecting && hasMore && !loading) {
       setPage(prev => prev + 1)
     }
-  }, [hasMore, isLoading])
+  }, [hasMore, loading])
 
   useEffect(() => {
     const option = {
@@ -161,8 +152,8 @@ export default function Home() {
   }, [handleObserver])
 
   useEffect(() => {
-    loadPosts(page)
-  }, [page, userId])
+    loadPosts()
+  }, [loadPosts])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-purple-900">
@@ -181,13 +172,13 @@ export default function Home() {
             )}
           </div>
 
-          {isLoading && page === 1 ? (
+          {loading && page === 1 ? (
             <LoadingSkeleton />
           ) : posts.length > 0 ? (
             <>
               <PostList posts={posts} />
               <div ref={loader} className="h-20 flex items-center justify-center">
-                {isLoading && <div className="text-gray-400">Loading more posts...</div>}
+                {loading && <div className="text-gray-400">Loading more posts...</div>}
               </div>
             </>
           ) : (
