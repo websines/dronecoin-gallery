@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { X, ImageIcon, Video, Loader2 } from 'lucide-react'
 import Image from 'next/image'
 import { useWalletStore } from '@/store/wallet'
+import toast from 'react-hot-toast'
 
 interface CloudinaryResult {
   event: string
@@ -20,7 +21,7 @@ interface CloudinaryResult {
 }
 
 export default function CreatePostPage() {
-  const { isConnected, userId } = useWalletStore()
+  const { isConnected, userId, address } = useWalletStore()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
@@ -36,19 +37,23 @@ export default function CreatePostPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!address) {
+      toast.error('Please connect your wallet first')
+      return
+    }
 
+    setIsLoading(true)
+    const formData = new FormData()
+    formData.append('title', title)
+    formData.append('content', content)
+    formData.append('walletAddress', address)
+    if (preview) {
+      formData.append('media', preview)
+    }
     try {
-      setIsLoading(true)
       const response = await fetch('/api/posts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          content,
-          imageUrl: preview,
-          mediaType,
-          userId
-        }),
+        body: formData,
       })
 
       if (!response.ok) throw new Error('Failed to create post')

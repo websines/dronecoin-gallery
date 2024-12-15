@@ -2,20 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/src/db'
 import { posts, users, comments, votes } from '@/src/db/schema'
 import { desc, eq, sql } from 'drizzle-orm'
-import { getServerSession } from '@/src/auth'
-import { authOptions } from '@/src/auth/[...nextauth]'
 import { Buffer } from 'buffer'
 import fs from 'fs/promises'
 import path from 'path'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return new Response('Unauthorized', { status: 401 })
+    const formData = await request.formData()
+    const walletAddress = formData.get('walletAddress') as string
+    
+    if (!walletAddress) {
+      return new Response('Unauthorized - Wallet not connected', { status: 401 })
     }
 
-    const formData = await request.formData()
     const title = formData.get('title') as string
     const content = formData.get('content') as string
     const mediaFile = formData.get('media') as File | null
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
         title,
         content,
         imageUrl,
-        authorId: session.user.id,
+        authorId: walletAddress,
         createdAt: new Date(),
       })
       .returning()
