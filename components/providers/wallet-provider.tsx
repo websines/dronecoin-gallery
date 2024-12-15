@@ -3,40 +3,45 @@
 import { useEffect } from 'react'
 import { useWalletStore } from '@/store/wallet'
 
-declare global {
-  interface Window {
-    kasware: any
+interface KaswareWindow extends Window {
+  kasware?: {
+    requestAccounts: () => Promise<string[]>
+    getBalance: () => Promise<{
+      confirmed: number
+      unconfirmed: number
+      total: number
+    }>
   }
 }
+
+declare const window: KaswareWindow
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const { connect, disconnect, updateBalance } = useWalletStore()
 
   useEffect(() => {
-    if (typeof window.kasware === 'undefined') {
-      console.log('Please install KasWare Wallet')
-      return
+    const handleAccountsChanged = () => {
+      connect()
     }
 
-    // Listen for account changes
-    window.kasware.on('accountsChanged', (accounts: string[]) => {
-      if (accounts.length === 0) {
-        disconnect()
-      } else {
-        connect()
-      }
-    })
+    const handleDisconnect = () => {
+      disconnect()
+    }
 
-    // Listen for network changes
-    window.kasware.on('networkChanged', () => {
+    const handleNetworkChanged = () => {
       updateBalance()
-    })
+    }
+
+    window.addEventListener('kasware#accountsChanged', handleAccountsChanged)
+    window.addEventListener('kasware#disconnect', handleDisconnect)
+    window.addEventListener('kasware#networkChanged', handleNetworkChanged)
 
     return () => {
-      window.kasware.removeListener('accountsChanged', () => {})
-      window.kasware.removeListener('networkChanged', () => {})
+      window.removeEventListener('kasware#accountsChanged', handleAccountsChanged)
+      window.removeEventListener('kasware#disconnect', handleDisconnect)
+      window.removeEventListener('kasware#networkChanged', handleNetworkChanged)
     }
-  }, [])
+  }, [connect, disconnect, updateBalance])
 
   return <>{children}</>
-} 
+}

@@ -2,16 +2,45 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/src/db'
 import { posts, users, comments, votes } from '@/src/db/schema'
 import { desc, eq, sql } from 'drizzle-orm'
+import { getServerSession } from '@/src/auth'
+import { authOptions } from '@/src/auth/[...nextauth]'
+import { Buffer } from 'buffer'
+import fs from 'fs/promises'
+import path from 'path'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { title, content, mediaUrl, mediaType, userId } = await request.json()
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return new Response('Unauthorized', { status: 401 })
+    }
 
-    if (!title || !content || !userId) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+    const formData = await request.formData()
+    const title = formData.get('title') as string
+    const content = formData.get('content') as string
+    const mediaFile = formData.get('media') as File | null
+
+    if (!title || !content) {
+      return new Response('Missing required fields', { status: 400 })
+    }
+
+    let imageUrl = null
+    if (mediaFile) {
+      try {
+        const bytes = await mediaFile.arrayBuffer()
+        const buffer = Buffer.from(bytes)
+
+        const fileName = `${Date.now()}-${mediaFile.name}`
+        const filePath = path.join(process.cwd(), 'public', 'uploads', fileName)
+        
+        await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
+        await fs.promises.writeFile(filePath, buffer)
+        
+        imageUrl = `/uploads/${fileName}`
+      } catch (error) {
+        console.error('Error uploading media:', error)
+        return new Response('Failed to upload media', { status: 500 })
+      }
     }
 
     // Create post with media
@@ -20,9 +49,9 @@ export async function POST(request: Request) {
       .values({
         title,
         content,
-        imageUrl: mediaUrl,
-        mediaType,
-        authorId: userId,
+        imageUrl,
+        authorId: session.user.id,
+        createdAt: new Date(),
       })
       .returning()
 

@@ -16,7 +16,6 @@ interface PostCardProps {
     title: string
     content: string
     imageUrl: string | null
-    mediaType?: 'image' | 'video' | null
     createdAt: Date
     author: {
       id: string
@@ -124,6 +123,45 @@ export function PostCard({ post, onDelete }: PostCardProps) {
     }
   }
 
+  const renderMedia = () => {
+    if (!post.imageUrl) return null
+
+    const fileExtension = post.imageUrl.split('.').pop()?.toLowerCase()
+    const isVideo = fileExtension === 'mp4' || fileExtension === 'mov' || fileExtension === 'webm'
+
+    if (isVideo) {
+      return (
+        <div className="relative w-full aspect-video">
+          <video
+            className="w-full h-full object-cover rounded-lg"
+            controls
+            playsInline
+            preload="metadata"
+            onError={(e) => {
+              console.error('Video playback error:', e)
+              toast.error('Failed to load video')
+            }}
+          >
+            <source src={post.imageUrl} type={`video/${fileExtension}`} />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      )
+    }
+
+    return (
+      <div className="relative w-full aspect-video">
+        <Image
+          src={post.imageUrl}
+          alt={post.title || 'Post image'}
+          fill
+          className="object-cover rounded-lg"
+          onError={() => toast.error('Failed to load image')}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="bg-gray-800/50 rounded-lg p-6">
       <div className="flex justify-between items-start mb-4">
@@ -150,30 +188,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
 
       <p className="text-gray-300 mb-4">{post.content}</p>
 
-      {post.imageUrl && (
-        <div className="mb-4 relative rounded-lg overflow-hidden bg-gray-900">
-          {post.imageUrl.endsWith('.mp4') || post.imageUrl.endsWith('.mov') ? (
-            <video 
-              controls
-              playsInline
-              preload="metadata"
-              className="w-full h-auto max-h-[512px] object-contain"
-            >
-              <source src={post.imageUrl} type={post.imageUrl.endsWith('.mp4') ? 'video/mp4' : 'video/quicktime'} />
-              Your browser does not support the video tag.
-            </video>
-          ) : (
-            <div className="relative aspect-video">
-              <Image
-                src={post.imageUrl}
-                alt={post.title}
-                fill
-                className="object-contain"
-              />
-            </div>
-          )}
-        </div>
-      )}
+      {renderMedia()}
 
       <div className="flex items-center gap-4">
         <Button

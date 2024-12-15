@@ -67,25 +67,25 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true)
   const { userId, isConnected } = useWalletStore()
 
-  const fetchPosts = async () => {
-    try {
-      setIsLoading(true)
-      const response = await fetch(
-        `/api/posts${userId ? `?currentUserId=${userId}` : ''}`
-      )
-      if (!response.ok) throw new Error('Failed to fetch posts')
-      const data = await response.json()
-      setPosts(data)
-    } catch (error) {
-      console.error('Error fetching posts:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   useEffect(() => {
+    async function fetchPosts() {
+      try {
+        setIsLoading(true)
+        const response = await fetch(
+          `/api/posts${userId ? `?currentUserId=${userId}` : ''}`
+        )
+        if (!response.ok) throw new Error('Failed to fetch posts')
+        const data = await response.json()
+        setPosts(data)
+      } catch (error) {
+        console.error('Error fetching posts:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
     fetchPosts()
-  }, [userId, fetchPosts])
+  }, [userId])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-purple-950">

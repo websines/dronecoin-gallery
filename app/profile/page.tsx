@@ -50,36 +50,37 @@ export default function ProfilePage() {
       router.push('/')
       return
     }
-    fetchUserActivity()
-  }, [isConnected, userId, router, fetchUserActivity])
 
-  const fetchUserActivity = async () => {
-    if (!userId) return
-    try {
-      setIsLoading(true)
-      const [postsRes, commentsRes] = await Promise.all([
-        fetch(`/api/posts?authorId=${userId}`),
-        fetch(`/api/comments?authorId=${userId}`)
-      ])
+    async function fetchUserActivity() {
+      if (!userId) return
+      try {
+        setIsLoading(true)
+        const [postsRes, commentsRes] = await Promise.all([
+          fetch(`/api/posts?authorId=${userId}`),
+          fetch(`/api/comments?authorId=${userId}`)
+        ])
 
-      if (!postsRes.ok || !commentsRes.ok) {
-        throw new Error('Failed to fetch user activity')
+        if (!postsRes.ok || !commentsRes.ok) {
+          throw new Error('Failed to fetch user activity')
+        }
+
+        const [postsData, commentsData] = await Promise.all([
+          postsRes.json(),
+          commentsRes.json()
+        ])
+
+        setPosts(postsData)
+        setComments(commentsData)
+      } catch (error) {
+        console.error('Error fetching user activity:', error)
+        toast.error('Failed to load your activity')
+      } finally {
+        setIsLoading(false)
       }
-
-      const [postsData, commentsData] = await Promise.all([
-        postsRes.json(),
-        commentsRes.json()
-      ])
-
-      setPosts(postsData)
-      setComments(commentsData)
-    } catch (error) {
-      console.error('Error fetching user activity:', error)
-      toast.error('Failed to load your activity')
-    } finally {
-      setIsLoading(false)
     }
-  }
+
+    fetchUserActivity()
+  }, [isConnected, userId, router])
 
   const handleDeleteComment = async (commentId: string) => {
     try {

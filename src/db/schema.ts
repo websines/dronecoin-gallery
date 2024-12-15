@@ -1,4 +1,5 @@
 import { pgTable, text, uuid, timestamp, integer } from 'drizzle-orm/pg-core'
+import { relations } from 'drizzle-orm/relations'
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -15,11 +16,12 @@ export const posts = pgTable('posts', {
   mediaType: text('media_type', { enum: ['image', 'video'] }),
   authorId: uuid('author_id')
     .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
+    .references((): typeof users.id => users.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+type CommentsTable = typeof comments;
 export const comments = pgTable('comments', {
   id: uuid('id').defaultRandom().primaryKey(),
   content: text('content').notNull(),
@@ -28,7 +30,7 @@ export const comments = pgTable('comments', {
   parentId: uuid('parent_id').references(() => comments.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+}) satisfies CommentsTable;
 
 export const votes = pgTable('votes', {
   id: uuid('id').defaultRandom().primaryKey(),
